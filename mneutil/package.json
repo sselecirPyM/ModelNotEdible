@@ -1,0 +1,14 @@
+{
+  "name": "mneutil",
+  "version": "0.1.0",
+  "files": [
+    "mneutil_bg.wasm",
+    "mneutil.js",
+    "mneutil.d.ts"
+  ],
+  "module": "mneutil.js",
+  "types": "mneutil.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
