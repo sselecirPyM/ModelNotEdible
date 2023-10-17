@@ -5,6 +5,7 @@ export class Renderer {
   constructor(mne) {
     this.mne = mne;
     this.device = mne.device;
+    this.opaqueName = "opaque";
 
     const device = mne.device;
 
@@ -93,7 +94,7 @@ export class Renderer {
       depthFormat: this.depthTexture.format
     };
 
-    this.renderPass(commandEncoder, renderPassDescriptor, "opaque");
+    this.renderPass(commandEncoder, renderPassDescriptor, this.opaqueName);
   }
 
   renderPass(commandEncoder, passDescriptor, passName) {

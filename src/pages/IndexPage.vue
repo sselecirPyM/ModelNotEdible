@@ -121,7 +121,6 @@ export default defineComponent({
     },
     async showDir(fileHandle) {
       const baseNode = [];
-      const files = [];
       for await (const value of await fileHandle.values()) {
         const node = {
           label: value.name,
@@ -132,7 +131,6 @@ export default defineComponent({
         if (value.kind == "directory") {
           node.lazy = true;
         }
-        files.push(value);
         baseNode.push(node);
       }
       return baseNode;

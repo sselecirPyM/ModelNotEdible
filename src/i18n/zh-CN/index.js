@@ -8,5 +8,7 @@ export default {
   delete: '删除',
   resetTransform: '重设变换',
   replayAnimation: '重播动画',
-  restart: '重新开始'
+  restart: '重新开始',
+  fullScreen:'全屏',
+  changeShaderTest:'更改着色器测试'
 }

@@ -8,5 +8,7 @@ export default {
   delete: 'Delete',
   resetTransform: 'Reset Transform',
   replayAnimation: 'replay animation',
-  restart: 'restart'
+  restart: 'restart',
+  fullScreen:'full screen',
+  changeShaderTest:'Change Shader Test'
 }

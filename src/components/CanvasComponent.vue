@@ -9,6 +9,8 @@
         { icon: 'fa-solid fa-arrows-spin', value: 2, accesskey: 'r' },
         { icon: 'fa-solid fa-up-down-left-right', value: 3, accesskey: 't' }
       ]" />
+      <q-btn :label="$t('fullScreen')" @click="requestFullscreen" />
+      <q-btn :label="$t('changeShaderTest')" @click="changeOpaqueShader((opaqueShaderIndex + 1) % 2)" />
     </div>
   </div>
 </template>
@@ -23,9 +25,7 @@ import { skinning } from '../../mneutil/mneutil'
 
 import { MMDAnimation } from '../MMD/MMDAnimation'
 
-
-const opaqueShader = `
-struct VertexOut {
+const opaqueVertDefine = `struct VertexOut {
   @builtin(position) position : vec4f,
   @location(0) color : vec4f,
   @location(1) uv : vec2f,
@@ -67,24 +67,62 @@ fn vertex_main(@location(0) position: vec3f,
   output.shadow = (view.shadowMatrix * position1).xyz * vec3f(0.5,-0.5,1)+vec3f(0.5,0.5,0);
   return output;
 }
+`;
+
+const opaqueShader = `
+${opaqueVertDefine}
+@fragment
+fn fragment_main(fragData: VertexOut) -> @location(0) vec4f
+{
+  var norm = normalize(fragData.normal);
+  var textureSize = textureDimensions(myTexture);
+  var uv = fragData.uv;
+  var color = textureSample(myTexture, mySampler, uv);
+  var lightDir = view.lightDir;
+  var light = clamp(dot(norm, lightDir), 0, 1);
+  var shadowTest : f32 = textureSampleCompare(shadowTexture,shadowSampler, fragData.shadow.xy, fragData.shadow.z - 0.001);
+
+  if(all(fragData.shadow > vec3f(0)) && all(fragData.shadow < vec3f(1))){
+  }
+  else{
+    shadowTest = 1;
+  }
+  light = light * shadowTest * 0.5 + 0.5;
+
+  return vec4f(color.rgb * light , 1);
+}
+`;
+const opaqueShader2 = `
+${opaqueVertDefine}
+
+fn fwidth(e:vec2f) ->vec2f{
+  return abs(dpdx(e)) + abs(dpdy(e));
+}
+
+fn pixelatedUV(uv: vec2f, textureSize: vec2f) -> vec2f{
+  var xy = uv * textureSize;
+  var alignxy = round(xy);
+  return (alignxy + clamp((xy-alignxy) / fwidth(xy), vec2f(-0.5), vec2f(0.5))) / textureSize;
+}
 
 @fragment
 fn fragment_main(fragData: VertexOut) -> @location(0) vec4f
 {
   var norm = normalize(fragData.normal);
-  var color = textureSample(myTexture, mySampler, fragData.uv);
+  var textureSize = textureDimensions(myTexture);
+  var uv = fragData.uv;
+  uv = pixelatedUV(uv, vec2f(textureSize));
+  var color = textureSample(myTexture, mySampler, uv);
   var lightDir = view.lightDir;
-  var light = clamp(dot(norm, lightDir), 0,1);
-  var shadowTest : f32;
-  shadowTest = textureSampleCompare(shadowTexture,shadowSampler,fragData.shadow.xy, fragData.shadow.z - 0.001);
+  var light = clamp(dot(norm, lightDir), 0, 1);
+  var shadowTest : f32 = textureSampleCompare(shadowTexture,shadowSampler, fragData.shadow.xy, fragData.shadow.z - 0.001);
 
-  if(all(fragData.shadow > vec3f(0)) && all(fragData.shadow < vec3f(1)))
-  {
+  if(all(fragData.shadow > vec3f(0)) && all(fragData.shadow < vec3f(1))){
   }
   else{
     shadowTest = 1;
   }
-  light = light*shadowTest*0.5+0.5;
+  light = light * shadowTest * 0.5 + 0.5;
 
   return vec4f(color.rgb * light , 1);
 }
@@ -188,6 +226,7 @@ export default defineComponent({
       renderer: null,
       uniformBuffers: [],
       opaqueRender: null,
+      opaqueRender2: null,
       shadowRender: null,
       gpuSkinning: null,
       context: null,
@@ -195,6 +234,7 @@ export default defineComponent({
       temporaryBuffer: new Float32Array(1),
       previous: undefined,
       deltaTime: 0,
+      opaqueShaderIndex: 0,
       camera: {
         center: [0, 10, 0],
         distance: 21,
@@ -279,6 +319,7 @@ export default defineComponent({
       }
 
       this.opaqueRender = this.mne.createPipeline(opaqueShader);
+      this.opaqueRender2 = this.mne.createPipeline(opaqueShader2);
       this.shadowRender = this.mne.createPipeline(shadowCastShader);
       this.gpuSkinning = this.mne.createComputePipeline(skinningShader);
 
@@ -492,7 +533,7 @@ export default defineComponent({
       const pmx = obj.pmx;
       render.mesh = MMDAnimation.pmxMesh(pmx);
       render.gpuBuffers = this.mne.createBuffers(render.mesh);
-      render.passes = { opaque: this.opaqueRender, shadow: this.shadowRender, skinning: this.gpuSkinning };
+      render.passes = { opaque: this.opaqueRender, opaque2: this.opaqueRender2, shadow: this.shadowRender, skinning: this.gpuSkinning };
       render.textures = new Array(render.imageFiles.length);
       for (let i = 0; i < render.imageFiles.length; i++) {
         (async () => {
@@ -569,6 +610,17 @@ export default defineComponent({
         angle: [0, Math.PI, 0],
       };
     },
+    changeOpaqueShader(index) {
+      if (index == 1) {
+        this.renderer.opaqueName = "opaque2";
+      } else {
+        this.renderer.opaqueName = "opaque";
+      }
+      this.opaqueShaderIndex = index;
+    },
+    requestFullscreen() {
+      this.$refs.xy.requestFullscreen();
+    }
   }
 })
 </script>
